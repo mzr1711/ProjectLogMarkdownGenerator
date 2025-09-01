@@ -1,0 +1,2 @@
+# ProjectLogMarkdownGenerator
+项目日志markdown文件自动生成
