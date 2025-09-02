@@ -4,20 +4,32 @@ namespace MarkdownGenerator
 {
     internal class Program
     {
-        static string projectName = "像素塔防开发日志";
-        static string savePath = "E:\\zhuomian\\";
+        static string exePath = AppDomain.CurrentDomain.BaseDirectory;
+        static string folderPath = Path.GetDirectoryName(exePath);
+        static string folderName = Path.GetFileName(folderPath);
+
+        static string headerDate = "**日期：**";
+        static string headerStage = "**当前阶段：**";
+        static string headerTotalCount = "### 目标完成总数：";
+        static string headerYesterdayCount = "### 昨日完成目标数：";
+        static string header_1 = "#### 一、今日开发目标";
+        static string header_2 = "#### 二、昨日未完成开发目标";
+        static string header_3 = "#### 三、近期开发目标";
+        static string header_4 = "#### 四、项目优化";
+        static string header_5 = "#### 五、感想";
+        static string header_6 = "#### 六、已完成的任务";
 
         static void Main(string[] args)
         {
             try
             {
                 DateTime today = DateTime.Now;
-                string fileName = projectName + "_" + today.Year + "_" + today.Month + "_" + today.Day + ".md";
-                string filePath = savePath + fileName;
+                string fileName = $"{folderName}_{today.Year}_{today.Month}_{today.Day}.md";
+                string filePath = Path.Combine(exePath, fileName);
 
                 DateTime yesterday = today.AddDays(-1);
-                string yesterdayFileName = $"{projectName}_{yesterday.Year}_{yesterday.Month}_{yesterday.Day}.md";
-                string yesterdayFilePath = savePath + yesterdayFileName;
+                string yesterdayFileName = $"{folderName}_{yesterday.Year}_{yesterday.Month}_{yesterday.Day}.md";
+                string yesterdayFilePath = Path.Combine(exePath, yesterdayFileName);
 
                 if (File.Exists(filePath))
                 {
@@ -54,77 +66,120 @@ namespace MarkdownGenerator
             if (!File.Exists(filePath))
                 return null;
 
+            Console.WriteLine("读取昨日文件");
+
             List<string> lines = File.ReadAllLines(filePath, Encoding.UTF8).ToList();
 
             List<string> listUnresolvedTask = new List<string>();
+            List<string> listResolvedTask = new List<string>();
             int taskIndex = -1;
             int yesterdayTaskIndex = -1;
+            int finishedTaskIndex = -1;
 
             for (int i = 0; i < lines.Count; i++)
             {
                 // 替换日期
-                if (lines[i].Contains("**日期：**"))
+                if (lines[i].Contains(headerDate))
                 {
-                    lines[i] = $"**日期：**{today.Year}年{today.Month}月{today.Day}（{WeekToChinese(today.DayOfWeek)}）";
-                }
-
-                // 清空今日完成目标数
-                if (lines[i].Contains("### 今日完成目标数："))
-                {
-                    lines[i] = "### 今日完成目标数：0";
+                    lines[i] = $"{headerDate}{today.Year}年{today.Month}月{today.Day}（{WeekToChinese(today.DayOfWeek)}）";
+                    Console.WriteLine("替换日期完成");
                 }
 
                 // 查找下标位置
-                if (lines[i].Contains("#### 一、今日开发目标"))
+                if (lines[i].Contains(header_1))
                 {
                     taskIndex = i;
                 }
 
                 // 查找下标位置
-                if (lines[i].Contains("#### 二、昨日任务完成情况"))
+                if (lines[i].Contains(header_2))
                 {
                     yesterdayTaskIndex = i;
                 }
+
+                // 查找下标位置
+                if (lines[i].Contains(header_6))
+                {
+                    finishedTaskIndex = i;
+                }
             }
 
-            if (taskIndex != -1 && yesterdayTaskIndex != -1)
+            if (taskIndex != -1 && yesterdayTaskIndex != -1 && finishedTaskIndex != -1)
             {
-                // 读取昨日未完成的任务添加进列表，并清空所有任务
-                int i = 2;
-                while (!lines[taskIndex + i].Contains("####"))
+                // 读取今日开发目标项添加进列表，并清空所有任务
+                int index = 1;
+                while (!lines[taskIndex + index].Contains("####"))
                 {
-                    if (lines[taskIndex + i].Contains("- [ ]"))
+                    if (lines[taskIndex + index].Contains("- [ ]"))
                     {
-                        listUnresolvedTask.Add(lines[taskIndex + i]);
-                        lines.RemoveAt(taskIndex + i);
+                        listUnresolvedTask.Add(lines[taskIndex + index]);
+                        lines.RemoveAt(taskIndex + index);
                         yesterdayTaskIndex--;
+                        finishedTaskIndex--;
                     }
-                    else if (lines[taskIndex + i].Contains("- [x]"))
+                    else if (lines[taskIndex + index].Contains("- [x]"))
                     {
-                        lines.RemoveAt(taskIndex + i);
+                        listResolvedTask.Add(lines[taskIndex + index]);
+                        lines.RemoveAt(taskIndex + index);
                         yesterdayTaskIndex--;
+                        finishedTaskIndex--;
                     }
                     else
-                        i++;
+                        index++;
                 }
 
                 // 删除已完成的昨日任务
-                i = 2;
-                while (!lines[yesterdayTaskIndex + i].Contains("####"))
+                index = 1;
+                while (!lines[yesterdayTaskIndex + index].Contains("####"))
                 {
-                    if (lines[yesterdayTaskIndex + i].Contains("- [x]"))
-                        lines.RemoveAt(yesterdayTaskIndex + i);
+                    if (lines[yesterdayTaskIndex + index].Contains("- [x]"))
+                    {
+                        listResolvedTask.Add(lines[yesterdayTaskIndex + index]);
+                        lines.RemoveAt(yesterdayTaskIndex + index);
+                        finishedTaskIndex--;
+                    }
                     else
-                        i++;
+                        index++;
                 }
 
+                //Console.WriteLine("删除昨日任务完成");
+
                 // 将昨日未完成的当天任务添加进今日的昨日任务中
-                i = 2;
-                foreach (string task in listUnresolvedTask)
+                index = 1;
+                for (int i = listUnresolvedTask.Count - 1; i >= 0; i--)
                 {
-                    lines.Insert(yesterdayTaskIndex + i, task);
+                    lines.Insert(yesterdayTaskIndex + index, listUnresolvedTask[i]);
+                    finishedTaskIndex++;
+                }
+
+                //Console.WriteLine("添加未完成的任务进昨日任务");
+
+                // 将完成的任务添加到已完成的任务中
+                index = 1;
+                for (int i = listResolvedTask.Count - 1; i >= 0; i--)
+                {
+                    lines.Insert(finishedTaskIndex + index, listResolvedTask[i]);
                 }
             }
+            Console.WriteLine("任务更新完成");
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                // 写入完成目标总数
+                if (lines[i].Contains(headerTotalCount))
+                {
+                    int? count = GetNumberAfterText(lines[i], headerTotalCount);
+                    count += listResolvedTask.Count;
+                    lines[i] = headerTotalCount + count;
+                }
+
+                // 写入昨日完成目标数
+                if (lines[i].Contains(headerYesterdayCount))
+                {
+                    lines[i] = headerYesterdayCount + listResolvedTask.Count;
+                }
+            }
+            Console.WriteLine("目标数完成");
 
             // Environment.NewLine可以自适应操作系统换行规则，Windows使用\r\n，macOS和Linux使用\n
             return String.Join(Environment.NewLine, lines);
@@ -134,20 +189,21 @@ namespace MarkdownGenerator
         {
             StringBuilder sb = new StringBuilder();
 
-            sb.AppendLine("## 像素塔防开发日志");
-            sb.AppendLine($"**日期：**{today.Year}年{today.Month}月{today.Day}日（{WeekToChinese(today.DayOfWeek)}）");
-            sb.AppendLine("**当前阶段：**");
-            sb.AppendLine("### 当前目标完成总数：0");
-            sb.AppendLine("### 今日完成目标数：0");
-            sb.AppendLine("#### 一、今日开发目标");
-            sb.AppendLine("- [ ] ~~等待添加~~");
-            sb.AppendLine("#### 二、昨日任务完成情况");
-            sb.AppendLine("- [ ] ~~等待添加~~");
-            sb.AppendLine("#### 三、近期开发目标");
-            sb.AppendLine("- [ ] ~~等待添加~~");
-            sb.AppendLine("#### 四、项目优化");
-            sb.AppendLine("-  ~~等待添加~~");
-            sb.AppendLine("#### 五、感想");
+            sb.AppendLine($"## {folderName}");
+            sb.AppendLine($"{headerDate}{today.Year}年{today.Month}月{today.Day}日（{WeekToChinese(today.DayOfWeek)}）");
+            sb.AppendLine(headerStage);
+            sb.AppendLine(headerTotalCount + "0");
+            sb.AppendLine(headerYesterdayCount + "0");
+            sb.AppendLine(header_1);
+            sb.AppendLine($"- [ ] ~~在此添加今日开发目标，勾选后第二天运行会自动添加进`已完成`部分，未勾选则会自动添加进`昨日任务`部分~~");
+            sb.AppendLine(header_2);
+            sb.AppendLine(header_3);
+            sb.AppendLine("- [ ] ~~在此添加近期开发目标，此处不会进行自动更新，用于记录近期开发想法~~");
+            sb.AppendLine(header_4);
+            sb.AppendLine("- ~~在此添加项目优化、Bug修复等~~");
+            sb.AppendLine(header_5);
+            sb.AppendLine("~~在此添加感想~~");
+            sb.AppendLine(header_6);
 
             return sb.ToString();
         }
@@ -167,6 +223,61 @@ namespace MarkdownGenerator
                 default: chinese = "星期_"; break;
             }
             return chinese;
+        }
+
+        /// <summary>
+        /// 用字符串操作提取特定文字后的数字
+        /// </summary>
+        static int? GetNumberAfterText(string input, string keyword)
+        {
+            // 检查输入是否有效
+            if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(keyword))
+            {
+                return null;
+            }
+
+            // 1. 找到关键字在字符串中的位置
+            int keywordIndex = input.IndexOf(keyword);
+            if (keywordIndex == -1)
+            {
+                // 没找到关键字
+                return null;
+            }
+
+            // 2. 计算关键字后面内容的起始位置
+            int startIndex = keywordIndex + keyword.Length;
+            if (startIndex >= input.Length)
+            {
+                // 关键字后面没有内容了
+                return null;
+            }
+
+            // 3. 截取关键字后面的所有内容
+            string afterKeyword = input.Substring(startIndex);
+
+            // 4. 从截取的内容中提取连续的数字
+            string numberStr = "";
+            foreach (char c in afterKeyword)
+            {
+                if (char.IsDigit(c))
+                {
+                    // 如果是数字，就添加到结果中
+                    numberStr += c;
+                }
+                else
+                {
+                    // 遇到非数字就停止（只取连续的数字）
+                    break;
+                }
+            }
+
+            // 5. 检查是否提取到了数字，并转换为int
+            if (!string.IsNullOrEmpty(numberStr) && int.TryParse(numberStr, out int result))
+            {
+                return result;
+            }
+
+            return null;
         }
     }
 }
