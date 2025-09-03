@@ -46,7 +46,6 @@ namespace MarkdownGenerator
                     content = GenerateNewMarkdownContent(today);
                 }
 
-                //Console.WriteLine(content);
                 File.WriteAllText(filePath, content, Encoding.UTF8);
                 Console.WriteLine("生成文件：" + fileName + "成功！");
                 Console.WriteLine("按任意键退出");
@@ -142,8 +141,6 @@ namespace MarkdownGenerator
                         index++;
                 }
 
-                //Console.WriteLine("删除昨日任务完成");
-
                 // 将昨日未完成的当天任务添加进今日的昨日任务中
                 index = 1;
                 for (int i = listUnresolvedTask.Count - 1; i >= 0; i--)
@@ -152,14 +149,13 @@ namespace MarkdownGenerator
                     finishedTaskIndex++;
                 }
 
-                //Console.WriteLine("添加未完成的任务进昨日任务");
-
                 // 将完成的任务添加到已完成的任务中
                 index = 1;
                 for (int i = listResolvedTask.Count - 1; i >= 0; i--)
                 {
                     lines.Insert(finishedTaskIndex + index, listResolvedTask[i]);
                 }
+                lines.Insert(finishedTaskIndex + index, $"- {today.Year}年{today.Month}月{today.Day}（{WeekToChinese(today.DayOfWeek)}）");
             }
             Console.WriteLine("任务更新完成");
 
@@ -179,7 +175,7 @@ namespace MarkdownGenerator
                     lines[i] = headerYesterdayCount + listResolvedTask.Count;
                 }
             }
-            Console.WriteLine("目标数完成");
+            Console.WriteLine("写入目标数完成");
 
             // Environment.NewLine可以自适应操作系统换行规则，Windows使用\r\n，macOS和Linux使用\n
             return String.Join(Environment.NewLine, lines);
