@@ -155,7 +155,8 @@ namespace MarkdownGenerator
                 {
                     lines.Insert(finishedTaskIndex + index, listResolvedTask[i]);
                 }
-                lines.Insert(finishedTaskIndex + index, $"- {today.Year}年{today.Month}月{today.Day}（{WeekToChinese(today.DayOfWeek)}）");
+                DateTime yesterday = today.AddDays(-1);
+                lines.Insert(finishedTaskIndex + index, $"- {yesterday.Year}年{yesterday.Month}月{yesterday.Day}（{WeekToChinese(yesterday.DayOfWeek)}）");
             }
             Console.WriteLine("任务更新完成");
 
